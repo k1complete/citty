@@ -1,0 +1,17 @@
+commit c195d8e8f91d01c4773acdd8108147b7dcfaf5d2
+Author: k1complete <oda@maqcsa.net>
+Date:   Sat May 3 21:23:28 2014 +0900
+
+    add man
+
+commit 70e980d56da75eb2ab9d0f13a37c8a75cb3a44ed
+Author: k1complete <oda@maqcsa.net>
+Date:   Sat May 3 17:44:59 2014 +0900
+
+    add autoconf in autogen.sh
+
+commit 97b138c47ec9e113434e77d84492df9e8bfd5df9
+Author: k1complete <oda@maqcsa.net>
+Date:   Sat May 3 17:43:15 2014 +0900
+
+    initial
