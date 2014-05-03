@@ -1,0 +1,43 @@
+.Dd 2014-05-10
+.Dt CITTY 1
+.Os
+.Sh NAME
+.Nm citty
+.Nd "chatscript interface to utility using tty"
+.Sh SYNOPSIS
+.Nm
+.Op Fl E Ar regexp
+.Op Ar utility Op Ar argument ...
+.Sh DESCRIPTION
+.Nm
+はttyを利用する
+.Ar utility 
+の入力を標準入力に切り換えることによって、対話的作業を自動で
+行わせます。
+.Nm
+は
+.Ar utility
+からの出力を読み込み、プロンプトを探します。プロンプトを探したら
+標準入力から一行読み込んで
+.Ar utility
+に送ります。標準入力が終了するか、
+.Ar utility
+が終了すると
+.Nm
+も終了します。
+
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl p Ar regexp
+.Ar utility
+のプロンプトを正規表現 
+.Ar regexp
+で指定します。デフォルトではbashの一般ユーザのプロンプトを示す '\\$ $' です。
+.El
+.Sh EXIT STATUS
+.Nm
+が正常に終了した場合、0を返します。
+もし
+.Ar utility
+が見つからなかった場合、実行出来なかった場合、
+正規表現が不正だった場合は 1 を返します。

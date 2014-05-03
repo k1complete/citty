@@ -128,7 +128,7 @@ int main(int argc, char * const argv[], char * const env[])
         if (pid == 0) { /* child */
                 av = &argv[optind];
                 if (execvp(av[0], av) < 0) {
-                        perror("execpve");
+                        perror("execpv");
                         exit(1);
                 }
         }

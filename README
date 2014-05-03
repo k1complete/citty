@@ -1,0 +1,33 @@
+CITTY: Chatscript interface to utility using tty.
+
+citty is reading stdin by line and send to interpriter,
+reading from interpriter by matching prompt regexp and send to stdout.
+
+example:
+$ cat example.citty
+ls
+$ citty /bin/bash < example.citty > result
+$ cat result
+bash-3.2$ ls
+#README#	Makefile.am~	compile		configure	lib
+AUTHORS		Makefile.in	config.h	configure.ac	missing
+COPYING		NEWS		config.h.in	configure.ac~	result
+ChangeLog	README		config.h.in~	configure.scan~	src
+INSTALL		aclocal.m4	config.h~	depcomp		stamp-h1
+Makefile	autogen.sh	config.log	example.citty
+Makefile.am	autom4te.cache	config.status	install-sh
+bash-3.2$ 
+$ cat example.erl.citty
+application:loaded_applications().
+q().
+$ citty -p '> $' erl < example.erl.citty > result.erl
+$ cat result.erl 
+Erlang/OTP 17 [erts-6.0] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false]
+
+Eshell V6.0  (abort with ^G)
+1> application:loaded_applications().
+[{kernel,"ERTS  CXC 138 10","3.0"},
+ {stdlib,"ERTS  CXC 138 10","2.0"}]
+2> q().
+ok
+3> 
