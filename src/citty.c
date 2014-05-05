@@ -115,6 +115,7 @@ int main(int argc, char * const argv[], char * const env[])
                 fprintf(stderr, "regcomp: %s\n", errbuf);
                 exit(EXIT_FAILURE);
         }
+        prompt = NULL;
         free(cust_prompt);
         if (optind == argc) {
                 usage(optdef);
@@ -134,8 +135,7 @@ int main(int argc, char * const argv[], char * const env[])
         }
         loop(master, &preg);
         regfree(&preg);
-        close(master);
-               
         kill(pid, SIGTERM);
+        close(master);
         exit(EXIT_SUCCESS);
 }
