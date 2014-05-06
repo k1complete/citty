@@ -1,3 +1,21 @@
+commit b73339cdacfeb896a60f2eb8413d150f028d2bd4
+Author: k1complete <oda@maqcsa.net>
+Date:   Mon May 5 21:49:18 2014 +0900
+
+    refactoring
+
+commit 44edfcde8232b9c2493c7120cf67f7eb1fa663bf
+Author: k1complete <oda@maqcsa.net>
+Date:   Sat May 3 21:25:59 2014 +0900
+
+    add authors
+
+commit 996c7d85826d0f833a7385041e287422727c9da7
+Author: k1complete <oda@maqcsa.net>
+Date:   Sat May 3 21:24:57 2014 +0900
+
+    add ChangeLog
+
 commit c195d8e8f91d01c4773acdd8108147b7dcfaf5d2
 Author: k1complete <oda@maqcsa.net>
 Date:   Sat May 3 21:23:28 2014 +0900

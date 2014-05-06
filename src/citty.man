@@ -6,8 +6,9 @@
 .Nd "chatscript interface to utility using tty"
 .Sh SYNOPSIS
 .Nm
-.Op Fl E Ar regexp
-.Op Ar utility Op Ar argument ...
+.Op Fl p Ar regexp
+.Op Fl f Ar len
+.Ar utility Op Ar argument ...
 .Sh DESCRIPTION
 .Nm
 はttyを利用する
@@ -33,6 +34,13 @@
 のプロンプトを正規表現 
 .Ar regexp
 で指定します。デフォルトではbashの一般ユーザのプロンプトを示す '\\$ $' です。
+.It Fl f Ar len
+標準入力の各行から空白類で区切られた文字列を最大
+.Ar len
+バイト読み込み、それを'%s $'に埋め込み、
+.Ar utility
+のプロンプト識別正規表現として使用します。読み込んだ文字列の
+メタキャラクタはエスケープされます。
 .El
 .Sh EXIT STATUS
 .Nm
