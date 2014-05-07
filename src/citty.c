@@ -75,11 +75,12 @@ int loop(int master, regex_t *preg, int feedn)
                 FD_ZERO(&fdrs);
                 FD_ZERO(&fdws);
                 FD_ZERO(&fdes);
-                FD_SET(master, &fdws);
-                FD_SET(master, &fdrs);
-                FD_SET(STDIN_FILENO, &fdrs);
-                FD_SET(master, &fdws);
-                FD_SET(master, &fdes);
+                if (prompt) {
+                        FD_SET(STDIN_FILENO, &fdrs);
+                } else {
+                        FD_SET(master, &fdrs);
+                }
+
                 if (select(FD_SETSIZE, &fdrs, &fdws, &fdes, NULL) < 0) {
                         perror("select");
                         return -1;
@@ -89,28 +90,27 @@ int loop(int master, regex_t *preg, int feedn)
                 }
                 if (prompt) {
                         if (FD_ISSET(STDIN_FILENO, &fdrs)) {
-                                if (feof(stdin)) {
-                                        printf("eof\n");
-                                        return -1;
-                                }
                                 if (fgets(inbuf, sizeof(inbuf), stdin)) {
                                         write(master, inbuf, strlen(inbuf));
                                         prompt = 0;
                                         change_prompt = 1;
+                                        if (feof(stdin)) {
+                                                write(master, "\n", 1);
+                                                change_prompt = 0;
+                                        }
                                 } else {
                                         return -1;
                                 }
+
                         }
                 } else {
-                        if (change_prompt && 
-                            FD_ISSET(STDIN_FILENO, &fdrs) && feedn > 0) {
+                        if (change_prompt && feedn > 0) {
                                 if (regrecomp_stdin_nchar(preg, feedn)) {
                                         return -1;
                                 }
                                 change_prompt = 0;
                         }
-                        if (FD_ISSET(master, &fdrs) || 
-                            FD_ISSET(master, &fdes)) {
+                        if (FD_ISSET(master, &fdrs)) {
                                 if ((buflen = read(master, buf, sizeof(buf))) < 0) {
                                         perror("read");
                                         return -1;
@@ -118,6 +118,11 @@ int loop(int master, regex_t *preg, int feedn)
                                 write(STDOUT_FILENO, buf, buflen);
                                 if (regexec(preg, buf, 0, NULL, 0) == 0) {
                                         prompt = 1;
+                                }
+                        } else {
+                                if (errno) {
+                                        printf("eof2 %d %s\n", errno, strerror(errno));
+                                        return -1;
                                 }
                         }
                 }
@@ -164,7 +169,6 @@ int main(int argc, char * const argv[], char * const env[])
                         break;
                 case 'f':
                         feedn = atoi(optarg);
-                        printf("aaa %d\n", feedn);
                         break;
                 default:
                         printf("%d\n", r);
