@@ -31,14 +31,15 @@ int regrecomp_stdin_nchar(regex_t *preg, int feedn)
         int regerr;
         char errbuf[BUFSIZ];
         char fmtbuf[BUFSIZ];
+        int d;
 
         if ((pbuf = malloc(pbuflen)) == NULL) {
                 perror("malloc");
                 return -1;
         }
         memset(pbuf, 0, pbuflen);
-        snprintf(fmtbuf, sizeof(fmtbuf), "%%%ds ", feedn);
-        fscanf(stdin, fmtbuf, pbuf);
+        snprintf(fmtbuf, sizeof(fmtbuf), "%%%ds%%c", feedn);
+        fscanf(stdin, fmtbuf, pbuf, &d);
         /*        
                 if ((readed != fread(pbuf, 1, feedn, stdin)) == feedn) {
                 perror("fread");
@@ -57,7 +58,7 @@ int regrecomp_stdin_nchar(regex_t *preg, int feedn)
         free(pattern);
         return 0;
 }
-int loop(int master, regex_t *preg, int feedn) 
+int loop(int master, regex_t *preg, int feedn, int ignore_banner) 
 {
         char buf[1000];
         char inbuf[1000];
@@ -115,7 +116,12 @@ int loop(int master, regex_t *preg, int feedn)
                                         perror("read");
                                         return -1;
                                 }
-                                write(STDOUT_FILENO, buf, buflen);
+                                if (buf[buflen-1] != '\n') {
+                                        ignore_banner = 0;
+                                }
+                                if (!ignore_banner) {
+                                        write(STDOUT_FILENO, buf, buflen);
+                                }
                                 if (regexec(preg, buf, 0, NULL, 0) == 0) {
                                         prompt = 1;
                                 }
@@ -145,8 +151,8 @@ int main(int argc, char * const argv[], char * const env[])
         int master;
         pid_t pid;
         int longindex = 0;
-        char *optstring = "+p:f:";
-        char *optdef = "[-p prompt | -f n]command [args...]";
+        char *optstring = "+p:f:b";
+        char *optdef = "[-p prompt | -f n][-b] command [args...]";
         regex_t preg;
         int r = 0;
         char *const *av;
@@ -155,6 +161,7 @@ int main(int argc, char * const argv[], char * const env[])
         int regerr;
         char errbuf[BUFSIZ];
         int feedn = 0;
+        int ignore_banner = 0;
         struct sigaction  sigact;
         memset(&sigact, 0, sizeof(sigact));
         sigact.sa_handler = sigchild;
@@ -169,6 +176,9 @@ int main(int argc, char * const argv[], char * const env[])
                         break;
                 case 'f':
                         feedn = atoi(optarg);
+                        break;
+                case 'b':
+                        ignore_banner = 1;
                         break;
                 default:
                         printf("%d\n", r);
@@ -200,7 +210,7 @@ int main(int argc, char * const argv[], char * const env[])
                         exit(1);
                 }
         }
-        loop(master, &preg, feedn);
+        loop(master, &preg, feedn, ignore_banner);
         regfree(&preg);
         kill(pid, SIGTERM);
         close(master);
