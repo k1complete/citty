@@ -25,22 +25,28 @@ int unescape_meta(char *src, char **dest, int len)
 int regrecomp_stdin_nchar(regex_t *preg, int feedn)
 {
         char *pbuf = NULL;
-        size_t pbuflen = feedn + 1;
+        size_t pbuflen = feedn;
         int readed = 0;
         char *pattern = NULL;
         int regerr;
         char errbuf[BUFSIZ];
         char fmtbuf[BUFSIZ];
-        int d;
+        int i;
 
         if ((pbuf = malloc(pbuflen)) == NULL) {
                 perror("malloc");
                 return -1;
         }
         memset(pbuf, 0, pbuflen);
-        snprintf(fmtbuf, sizeof(fmtbuf), "%%%ds%%c", feedn);
-        fscanf(stdin, fmtbuf, pbuf, &d);
-        /*        
+        snprintf(fmtbuf, sizeof(fmtbuf), "%%%ds ", feedn);
+        if (fscanf(stdin, fmtbuf, pbuf) == 0) {
+                fprintf(stderr, "no scaned \n");
+                return 0;
+        }
+        /*
+        fprintf(stderr, "scanned [%s]%d\n", pbuf, feedn);
+        */
+        /*
                 if ((readed != fread(pbuf, 1, feedn, stdin)) == feedn) {
                 perror("fread");
                 return -1;
@@ -50,96 +56,106 @@ int regrecomp_stdin_nchar(regex_t *preg, int feedn)
         unescape_meta(pbuf, &pattern, 2);
         free(pbuf);
         strcat(pattern, " $");
-        /*        printf("prompt regex [%s]\n", pbuf);  */
+        /*
+        fprintf(stderr, "prompt regex [%s]\n", pattern); 
+        */
         if ((regerr = regcomp(preg, pattern, 0))) {
                 regerror(regerr, preg, errbuf, sizeof(errbuf));
+                
                 return -1;
         }
         free(pattern);
         return 0;
 }
-int loop(int master, regex_t *preg, int feedn, int ignore_banner) 
+int copy_fileno(int master, int stdout_fileno, regex_t *preg, int ban)
 {
         char buf[1000];
-        char inbuf[1000];
-        int buflen;
-        char *promptbuf = NULL;
+        int i = sizeof(buf);
+        char *b;
+        char *b1;
+        memset(buf, 0, sizeof(buf));
+        if ((i = read(master, buf, sizeof(buf))) < 0) {
+                abort();
+        }
+        for (b = buf; ban > 0; ban--) {
+                /*                fprintf(stderr, "b %d [%s]\n", ban, b);
+                 */
+                if ((b1 = strchr(b, '\n')) == NULL) {
+                        break;
+                }
+                b = b1+1;
+        }
+        fwrite(b, 1, strlen(b), stdout);
+        /*        fprintf(stderr, "capture prompte [%s]\n", buf);*/
+        if (regexec(preg, b, 0, NULL, 0) == 0) {
+                return 1;
+        }
+        return 0;
+}
+int init_prompt(regex_t *preg, FILE *fp, int feedn)
+{
+        regrecomp_stdin_nchar(preg, feedn);
+        return 0;
+}
+
+int loop(int master, regex_t *preg, int feedn, int ban)
+{
         fd_set fdrs;
         fd_set fdws;
         fd_set fdes;
         int prompt = 0;
-        int change_prompt = 1;
+        char buf[1000];
+        char inbuf[1000];
+        int buflen;
 
+        init_prompt(preg, stdin, feedn);
+        prompt = 0;
         while (1) {
+                if (sigchilded) {
+                        return 0;
+                }
                 memset(buf, 0, sizeof(buf));
                 memset(inbuf, 0, sizeof(inbuf));
                 FD_ZERO(&fdrs);
                 FD_ZERO(&fdws);
                 FD_ZERO(&fdes);
-                if (prompt) {
-                        FD_SET(STDIN_FILENO, &fdrs);
-                } else {
-                        FD_SET(master, &fdrs);
-                }
-
-                if (select(FD_SETSIZE, &fdrs, &fdws, &fdes, NULL) < 0) {
-                        perror("select");
-                        return -1;
-                }
-                if (sigchilded) {
-                        return 0;
-                }
-                if (prompt) {
-                        if (FD_ISSET(STDIN_FILENO, &fdrs)) {
-                                if (fgets(inbuf, sizeof(inbuf), stdin)) {
-                                        write(master, inbuf, strlen(inbuf));
+                FD_SET(master, &fdrs);
+                if (prompt == 0) {
+                        if (select(FD_SETSIZE, &fdrs, &fdws, &fdes, NULL) < 0) {
+                                break;
+                        }
+                        prompt = copy_fileno(master, STDOUT_FILENO, preg, ban);
+                        if (ban) {
+                                ban--;
+                        }
+                } 
+                if (prompt == 1) {
+                        if (feof(stdin)) {
+                                break;
+                        }
+                        if (fgets(inbuf, sizeof(inbuf), stdin)) {
+                                write(master, inbuf, strlen(inbuf));
+                                if (!feof(stdin)) {
+                                        init_prompt(preg, stdin, feedn);
                                         prompt = 0;
-                                        change_prompt = 1;
-                                        if (feof(stdin)) {
-                                                write(master, "\n", 1);
-                                                change_prompt = 0;
-                                        }
                                 } else {
-                                        return -1;
-                                }
-
-                        }
-                } else {
-                        if (change_prompt && feedn > 0) {
-                                if (regrecomp_stdin_nchar(preg, feedn)) {
-                                        return -1;
-                                }
-                                change_prompt = 0;
-                        }
-                        if (FD_ISSET(master, &fdrs)) {
-                                if ((buflen = read(master, buf, sizeof(buf))) < 0) {
-                                        perror("read");
-                                        return -1;
-                                }
-                                if (buf[buflen-1] != '\n') {
-                                        ignore_banner = 0;
-                                }
-                                if (!ignore_banner) {
-                                        write(STDOUT_FILENO, buf, buflen);
-                                }
-                                if (regexec(preg, buf, 0, NULL, 0) == 0) {
-                                        prompt = 1;
+                                        write(master, "\n", 1);
+                                        prompt = 0;
                                 }
                         } else {
-                                if (errno) {
-                                        printf("eof2 %d %s\n", errno, strerror(errno));
-                                        return -1;
-                                }
+                                fprintf(stderr, "fgetsed null\n");
                         }
                 }
         }
         return 0;
 }
+
 int usage(const char *desc)
 {
         printf("usage: %s %s\n", PACKAGE_NAME, desc);
         printf("-p regexp : prompt regexp(default '\\$ $' for bash)\n");
         printf("-f len : len chars ahead each line for prompt )\n");
+        printf("-b len : skip banner n line\n");
         return 0;
 }
 void sigchild(int no)
@@ -151,8 +167,8 @@ int main(int argc, char * const argv[], char * const env[])
         int master;
         pid_t pid;
         int longindex = 0;
-        char *optstring = "+p:f:b";
-        char *optdef = "[-p prompt | -f n][-b] command [args...]";
+        char *optstring = "+p:f:b:";
+        char *optdef = "[-p prompt | -f n | -b n]command [args...]";
         regex_t preg;
         int r = 0;
         char *const *av;
@@ -161,7 +177,8 @@ int main(int argc, char * const argv[], char * const env[])
         int regerr;
         char errbuf[BUFSIZ];
         int feedn = 0;
-        int ignore_banner = 0;
+        int ban = 0;
+
         struct sigaction  sigact;
         memset(&sigact, 0, sizeof(sigact));
         sigact.sa_handler = sigchild;
@@ -178,7 +195,7 @@ int main(int argc, char * const argv[], char * const env[])
                         feedn = atoi(optarg);
                         break;
                 case 'b':
-                        ignore_banner = 1;
+                        ban = atoi(optarg);
                         break;
                 default:
                         printf("%d\n", r);
@@ -210,7 +227,7 @@ int main(int argc, char * const argv[], char * const env[])
                         exit(1);
                 }
         }
-        loop(master, &preg, feedn, ignore_banner);
+        loop(master, &preg, feedn, ban);
         regfree(&preg);
         kill(pid, SIGTERM);
         close(master);
